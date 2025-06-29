@@ -19,7 +19,7 @@ The platform uses a multi-agent framework with 5 specialized agents:
 - **Database**: PostgreSQL with PostGIS
 - **Vector DB**: Qdrant
 - **Cache**: Redis
-- **AI/ML**: Ollama (local LLM), Vanna.ai, SentenceTransformers
+- **AI/ML**: Ollama (local LLM, must be running locally), Vanna.ai, SentenceTransformers
 - **Visualization**: Plotly, pydeck
 - **Containerization**: Docker & Docker Compose
 
@@ -28,8 +28,8 @@ The platform uses a multi-agent framework with 5 specialized agents:
 ### Prerequisites
 
 - Python 3.11+
-- Docker and Docker Compose
-- Ollama (for local LLM)
+- **PostgreSQL, Qdrant, and Redis running locally**
+- **Ollama running locally** (see below)
 
 ### 1. Clone and Setup
 
@@ -48,17 +48,36 @@ cp config/env_template.txt .env
 # (API keys, database credentials, etc.)
 ```
 
-### 3. Start Infrastructure (Docker)
+### 3. Start Required Services Locally
 
+- **PostgreSQL**: Ensure it is running on port 5432 with the credentials in your `.env` file.
+- **Qdrant**: Ensure it is running on port 6333. See [Qdrant documentation](https://qdrant.tech/documentation/) for local install instructions.
+- **Redis**: Ensure it is running on port 6379.
+- **Ollama**: See below.
+
+#### Example: Check if services are running
 ```bash
-# Start all services (PostgreSQL, Qdrant, Redis, Ollama)
-docker-compose up -d
+# PostgreSQL
+pg_isready -h localhost -p 5432
 
-# Verify services are running
-docker-compose ps
+# Qdrant
+curl http://localhost:6333/collections
+
+# Redis
+redis-cli ping
 ```
 
-### 4. Install Dependencies
+### 4. Start Ollama (LLM) Locally
+
+- Download and install from [ollama.com](https://ollama.com/)
+- Start Ollama:
+  ```bash
+  ollama serve
+  # or just `ollama` if it starts the server by default
+  ```
+- Make sure it is accessible at `http://localhost:11434`
+
+### 5. Install Dependencies
 
 ```bash
 # Using uv (recommended)
@@ -68,11 +87,11 @@ uv sync
 pip install -r requirements.txt
 ```
 
-### 5. Run the Application
+### 6. Run the Application
 
 #### Option A: Using the main script
 ```bash
-python main.py
+python start_aura.py
 ```
 
 #### Option B: Direct Streamlit run
@@ -85,7 +104,7 @@ python run_streamlit.py
 streamlit run src/ui/streamlit_app.py
 ```
 
-### 6. Access the Application
+### 7. Access the Application
 
 Open your browser and navigate to: **http://localhost:8501**
 
@@ -184,6 +203,42 @@ The platform provides:
 - **AI-generated insights and recommendations**
 - **Interactive visualizations** (charts, maps)
 
+## 📁 Scripts and Utilities
+
+The project includes organized utility scripts for maintenance and debugging:
+
+### Check Scripts (`scripts/checks/`)
+
+Utility scripts for validating and checking system components:
+
+```bash
+# Check all database tables
+uv run python scripts/checks/check_all_tables.py
+
+# Validate data integrity
+uv run python scripts/checks/check_data.py
+
+# Check fuel data API connectivity
+uv run python scripts/checks/check_fuel_data.py
+```
+
+### Miscellaneous Scripts (`scripts/misc/`)
+
+Data population and debugging utilities:
+
+```bash
+# Populate all data (uses all APIs - may hit limits)
+uv run python scripts/misc/populate_all_data.py
+
+# Populate only weather data (API limit friendly)
+uv run python scripts/misc/populate_weather_only.py
+
+# Debug data ingestion issues
+uv run python scripts/misc/debug_ingestion.py
+```
+
+**Note**: The `populate_weather_only.py` script is recommended for regular updates to avoid hitting API limits.
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -200,7 +255,7 @@ QDRANT_URL=http://localhost:6333
 # Cache
 REDIS_URL=redis://localhost:6379
 
-# LLM
+# LLM (Ollama must be running locally)
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 
@@ -229,8 +284,8 @@ Each agent can be configured in `src/agents/`:
 pytest
 
 # Run specific test categories
-pytest tests/test_agents/
 pytest tests/test_core/
+pytest tests/test_agents/
 pytest tests/test_integration/
 ```
 
@@ -244,39 +299,14 @@ pytest --cov=src --cov-report=html
 
 ### Production Deployment
 
-```bash
-# Build and run with Docker Compose
-docker-compose -f docker-compose.prod.yml up -d
-
-# Or build individual services
-docker build -t aura-platform .
-docker run -p 8501:8501 aura-platform
-```
-
-### Development with Docker
-
-```bash
-# Start development environment
-docker-compose -f docker-compose.dev.yml up -d
-
-# View logs
-docker-compose logs -f app
-```
+*Docker deployment is no longer supported. Please run all services locally as described above.*
 
 ## 📈 Monitoring and Logging
 
 ### Logs
 
-```bash
-# Application logs
-docker-compose logs -f app
-
-# Database logs
-docker-compose logs -f postgres
-
-# Vector database logs
-docker-compose logs -f qdrant
-```
+- Application logs are output to the console by default.
+- Check your local service logs for PostgreSQL, Qdrant, and Redis as needed.
 
 ### Metrics
 
@@ -295,10 +325,10 @@ The platform provides:
 1. **Database Connection Failed**
    ```bash
    # Check if PostgreSQL is running
-   docker-compose ps postgres
+   pg_isready -h localhost -p 5432
    
-   # Check database logs
-   docker-compose logs postgres
+   # Check database logs (example for Homebrew)
+   tail -f /opt/homebrew/var/log/postgresql@*/log
    ```
 
 2. **Ollama Not Responding**
@@ -316,7 +346,7 @@ The platform provides:
    lsof -i :8501
    
    # Restart the application
-   docker-compose restart app
+   python run_streamlit.py
    ```
 
 ### Performance Optimization

@@ -1,0 +1,208 @@
+# META-PROMPT FOR CODE GENERATION: "Aura" Shipping Intelligence Platform
+
+<<CONTEXT SETTING>>
+You are an expert software architect and senior developer with 15+ years of experience in building enterprise-grade AI systems, multi-agent architectures, and data-intensive applications. You have deep expertise in Python, LangGraph, PostgreSQL, vector databases, and modern AI/ML frameworks. You understand the nuances of building production-ready systems that can handle complex workflows and real-time data processing.
+
+<<PROJECT OVERVIEW>>
+I need you to generate production-ready code for "Aura" - a sophisticated multi-agent shipping intelligence platform that provides deep, contextualized insights into shipping logistics. This is not a simple query-response system, but rather a collaborative network of specialized AI agents working together to deliver comprehensive analytical insights.
+
+<<CORE ARCHITECTURE REQUIREMENTS>>
+
+### 1. Multi-Agent Framework
+- **Primary Framework**: LangGraph for orchestration and workflow management
+- **Communication**: State-based object passing between agents
+- **Supervisor Pattern**: Central orchestrator managing agent coordination
+- **Error Handling**: Robust error recovery and fallback mechanisms
+
+### 2. Agent Network (5 Specialized Agents)
+1. **Supervisor Agent**: Query deconstruction, task routing, state management
+2. **Structured Data Agent**: Vanna.ai + PostgreSQL for SQL operations
+3. **Vector Search Agent**: SentenceTransformer + Qdrant for semantic search
+4. **Auxiliary Intelligence Agent**: Real-time API data gathering (weather, fuel, traffic)
+5. **Synthesis & Visualization Agent**: LLM synthesis + Plotly/pydeck visualizations
+
+### 3. Technology Stack
+- **Backend**: Python 3.11+, FastAPI/Streamlit
+- **Database**: PostgreSQL with PostGIS extension
+- **Vector DB**: Qdrant
+- **AI/ML**: Ollama (local LLM), Vanna.ai, SentenceTransformers
+- **Visualization**: Plotly, pydeck, Streamlit components
+- **APIs**: EIA, Open-Meteo, Azure Maps/HERE Traffic
+- **Orchestration**: LangGraph
+
+<<CODE GENERATION INSTRUCTIONS>>
+
+### PHASE 1: FOUNDATION & SETUP
+Generate the following components with production-grade quality:
+
+1. **Project Structure & Dependencies**
+   - `pyproject.toml` with all necessary dependencies
+   - Proper directory structure following Python best practices
+   - Environment configuration management
+   - Docker setup for containerization
+
+2. **Database Schema & Setup**
+   - PostgreSQL schema for shipping rates, zones, and auxiliary data
+   - PostGIS integration for geospatial queries
+   - Database connection pooling and management
+   - Migration scripts
+   - **Table Descriptions Schema**: Include a `table_descriptions` table for metadata:
+     ```sql
+     CREATE TABLE IF NOT EXISTS table_descriptions (
+         table_name TEXT,
+         column_name TEXT,
+         description TEXT,
+         PRIMARY KEY (table_name, column_name)
+     );
+     ```
+   - **Fedex Pricing Schema**: Include a `datasource_fedex_pricing` table for fedex pricinh:
+     ```sql
+     CREATE TABLE IF NOT EXISTS datasource_fedex_pricing (
+        weight REAL,
+        transportation_type TEXT
+        zone TEXT,
+        service_type TEXT,
+        price REAL
+     );
+     ```
+   - **Fedex Zone Distance Mapping Schema**: Include a `datasource_fedex_zone_distance_mapping` table for fedex pricinh:
+     ```sql
+     CREATE TABLE IF NOT EXISTS datasource_fedex_zone_distance_mapping (
+        zone TEXT,
+        min_distance REAL,
+        max_distance REAL
+     );
+     ```
+
+3. **Core Framework Setup**
+   - LangGraph workflow definition
+   - State object design and management
+   - Agent base classes and interfaces
+   - Error handling and logging infrastructure
+
+### PHASE 2: AGENT IMPLEMENTATION
+Implement each agent with the following specifications:
+
+1. **Supervisor Agent**
+   - Query intent classification
+   - Task decomposition logic
+   - Agent routing and coordination
+   - State object enrichment
+   - Parallel execution management
+
+2. **Structured Data Agent**
+   - Vanna.ai integration with Ollama
+   - SQL query generation and optimization
+   - Database connection management
+   - Result formatting and validation
+
+3. **Vector Search Agent**
+   - Document ingestion pipeline
+   - Embedding generation and storage
+   - Semantic search implementation
+   - Result ranking and filtering
+
+4. **Auxiliary Intelligence Agent**
+   - Multi-API integration (EIA, Open-Meteo, Traffic APIs)
+   - Rate limiting and caching
+   - Data validation and normalization
+   - Error handling for external services
+
+5. **Synthesis & Visualization Agent**
+   - LLM-based content synthesis
+   - Dynamic visualization generation
+   - Interactive chart creation
+   - Responsive UI component generation
+   - Any sql table which starts with `datasource` should be used as the primary pricing and distance info
+
+### PHASE 3: INTEGRATION & OPTIMIZATION
+- Agent communication protocols
+- Performance optimization and caching
+- Security and authentication
+- Monitoring and observability
+- Testing framework and examples
+
+<<QUALITY REQUIREMENTS>>
+
+### Code Quality Standards
+- **Type Hints**: Full type annotation throughout
+- **Documentation**: Comprehensive docstrings and comments
+- **Error Handling**: Graceful error recovery and user feedback
+- **Testing**: Unit tests, integration tests, and example workflows
+- **Performance**: Optimized for real-time processing
+- **Security**: Input validation, SQL injection prevention, API key management
+
+### Architecture Principles
+- **Modularity**: Each agent is self-contained and testable
+- **Scalability**: Horizontal scaling capabilities
+- **Maintainability**: Clean code, clear separation of concerns
+- **Reliability**: Fault tolerance and recovery mechanisms
+- **Observability**: Comprehensive logging and monitoring
+
+<<DELIVERABLE FORMAT>>
+
+Please generate the code in the following structure:
+
+```
+aura_shipping_platform/
+├── pyproject.toml
+├── README.md
+├── docker-compose.yml
+├── src/
+│   ├── __init__.py
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── supervisor.py
+│   │   ├── structured_data.py
+│   │   ├── vector_search.py
+│   │   ├── auxiliary_intelligence.py
+│   │   └── synthesis_visualization.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── state.py
+│   │   ├── workflow.py
+│   │   └── database.py
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── api_clients.py
+│   │   └── visualizations.py
+│   └── ui/
+│       ├── __init__.py
+│       └── streamlit_app.py
+├── tests/
+├── migrations/
+└── config/
+```
+
+<<SPECIAL INSTRUCTIONS>>
+
+1. **Start with the Core Framework**: Begin with the LangGraph workflow and state management
+2. **Implement Agents Incrementally**: Build and test each agent individually
+3. **Focus on Integration**: Ensure smooth communication between agents
+4. **Include Examples**: Provide working examples and sample queries
+5. **Documentation**: Comprehensive setup and usage instructions
+6. **Error Scenarios**: Handle edge cases and failure modes gracefully
+
+<<SUCCESS CRITERIA>>
+
+The generated code should:
+- Successfully orchestrate a 5-agent workflow
+- Handle complex hybrid queries (structured + unstructured)
+- Generate meaningful visualizations and insights
+- Be production-ready with proper error handling
+- Include comprehensive testing and documentation
+- Demonstrate the multi-agent architecture effectively
+
+<<CONTEXT FOR UNDERSTANDING>>
+
+This is not a simple CRUD application. It's an intelligent system that:
+- Deconstructs complex user queries into specialized tasks
+- Coordinates multiple AI agents working in parallel
+- Synthesizes diverse data sources into coherent insights
+- Generates dynamic, interactive visualizations
+- Provides contextual, real-time intelligence
+
+Think of this as building a "Palantir-like" intelligence platform for shipping logistics, where each agent is a specialist contributing to a comprehensive analysis.
+
+---

@@ -10,3 +10,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment variables
+.env
+*.env
+
+
+gemini
+reference_project

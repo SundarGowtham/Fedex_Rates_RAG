@@ -32,7 +32,7 @@ dependencies = [
     "qdrant-client>=1.7.0",
     # AI/ML
     "ollama>=0.2.0",
-    "vanna>=0.5.0",
+    "vanna[openai,qdrant]>=0.7.9",
     "sentence-transformers>=2.5.0",
     "transformers>=4.40.0",
     "torch>=2.0.0",
@@ -63,6 +63,13 @@ dependencies = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
+    "python-multipart>=0.0.20",
+    "aiofiles>=24.1.0",
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "flake8>=7.3.0",
+    "mypy>=1.16.1",
+    "langchain-ollama>=0.3.3",
 ]
 
 [project.optional-dependencies]
@@ -82,6 +89,19 @@ Documentation = "https://aura-shipping.github.io/aura-platform"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src/**/*.py",
+    "src/**/*.json",
+    "src/**/*.yaml",
+    "src/**/*.yml",
+    "README.md",
+    "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [tool.black]
 line-length = 88

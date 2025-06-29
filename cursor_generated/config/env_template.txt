@@ -1,0 +1,93 @@
+# Aura Shipping Intelligence Platform - Environment Configuration
+
+# Application Settings
+APP_NAME=Aura Shipping Intelligence Platform
+APP_VERSION=1.0.0
+ENVIRONMENT=development
+
+# Feature Flags
+ENABLE_CACHING=true
+ENABLE_MONITORING=true
+ENABLE_RATE_LIMITING=true
+
+# Database Configuration
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=aura_db
+DATABASE_USER=aura_user
+DATABASE_PASSWORD=aura_password
+DATABASE_MIN_SIZE=5
+DATABASE_MAX_SIZE=20
+
+# Qdrant Vector Database
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+QDRANT_API_KEY=
+QDRANT_COLLECTION=aura_documents
+
+# Redis Cache
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DATABASE=0
+
+# Ollama LLM
+OLLAMA_HOST=localhost
+OLLAMA_PORT=11434
+OLLAMA_MODEL=llama2
+OLLAMA_TEMPERATURE=0.1
+OLLAMA_MAX_TOKENS=4096
+
+# External APIs
+# EIA (Energy Information Administration) - https://www.eia.gov/opendata/
+EIA_API_KEY=your_eia_api_key_here
+EIA_BASE_URL=https://api.eia.gov/v2
+
+# Open-Meteo Weather API - https://open-meteo.com/
+OPENMETEO_BASE_URL=https://api.open-meteo.com/v1
+
+# Azure Maps API - https://azure.microsoft.com/en-us/services/azure-maps/
+AZURE_MAPS_KEY=your_azure_maps_key_here
+AZURE_MAPS_BASE_URL=https://atlas.microsoft.com
+
+# HERE Traffic API - https://developer.here.com/
+HERE_API_KEY=your_here_api_key_here
+HERE_BASE_URL=https://traffic.ls.hereapi.com
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+LOG_FILE_PATH=
+LOG_ENABLE_CONSOLE=true
+LOG_ENABLE_FILE=false
+
+# Agent Configuration
+SUPERVISOR_TIMEOUT=300
+SUPERVISOR_MAX_RETRIES=3
+
+STRUCTURED_DATA_TIMEOUT=300
+STRUCTURED_DATA_MAX_RETRIES=3
+
+VECTOR_SEARCH_TIMEOUT=300
+VECTOR_SEARCH_MAX_RETRIES=3
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+
+AUXILIARY_TIMEOUT=300
+AUXILIARY_MAX_RETRIES=3
+
+SYNTHESIS_TIMEOUT=300
+SYNTHESIS_MAX_RETRIES=3
+
+# Web Application Configuration
+WEB_HOST=0.0.0.0
+WEB_PORT=8000
+WEB_DEBUG=false
+WEB_RELOAD=false
+
+STREAMLIT_PORT=8501
+STREAMLIT_HOST=0.0.0.0
+
+# CORS Configuration
+CORS_ORIGINS=["*"]
+CORS_METHODS=["GET", "POST", "PUT", "DELETE"]
+CORS_HEADERS=["*"] 
