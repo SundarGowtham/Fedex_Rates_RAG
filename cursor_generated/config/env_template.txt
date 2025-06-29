@@ -43,6 +43,9 @@ OLLAMA_MAX_TOKENS=4096
 EIA_API_KEY=your_eia_api_key_here
 EIA_BASE_URL=https://api.eia.gov/v2
 
+# Google Maps API - https://developers.google.com/maps
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
 # Open-Meteo Weather API - https://open-meteo.com/
 OPENMETEO_BASE_URL=https://api.open-meteo.com/v1
 

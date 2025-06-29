@@ -21,12 +21,12 @@ import streamlit as st
 sys.path.append(str(Path(__file__).parent.parent))
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from agents.base import get_all_agents
-from core.database import get_database_manager, insert_sample_data
-from core.state import WorkflowState
-from core.workflow import execute_workflow
-from utils.data_ingestion import ingest_data_sources, clear_all_data, get_ingestion_status
-from utils.visualizations import create_pricing_chart, create_zone_chart
+from src.agents.base import get_all_agents
+from src.core.database import get_database_manager, insert_sample_data
+from src.core.state import WorkflowState
+from src.core.workflow import execute_workflow
+from src.utils.data_ingestion import ingest_data_sources, clear_all_data, get_ingestion_status
+from src.utils.visualizations import create_pricing_chart, create_zone_chart
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -116,9 +116,51 @@ def query_interface():
             message_placeholder.markdown("🤔 Analyzing your query...")
             
             try:
-                # Execute the query
-                result = execute_conversational_query(prompt)
+                # Execute the query and get both the summary and the state
+                result, state = execute_conversational_query(prompt)
                 message_placeholder.markdown(result)
+                
+                # --- Database Analysis Table ---
+                if state and state.structured_data and state.structured_data.query_results:
+                    df = pd.DataFrame(state.structured_data.query_results)
+                    if "price" in df.columns and "weight" in df.columns:
+                        df["Price per Pound"] = df["price"] / df["weight"]
+                    if "price" in df.columns:
+                        df = df.sort_values(by="price", ascending=True)
+                        min_price = df["price"].min()
+                        def highlight_best(s):
+                            return ['background-color: #d4edda' if v == min_price else '' for v in s] if min_price is not None else ['' for _ in s]
+                        st.write("#### 📊 Database Analysis (Tabular)")
+                        st.dataframe(df.style.apply(highlight_best, subset=["price"]), use_container_width=True)
+                    else:
+                        st.write("#### 📊 Database Analysis (Tabular)")
+                        st.dataframe(df, use_container_width=True)
+                # --- Key Insights Table ---
+                if state and state.synthesis and state.synthesis.insights:
+                    table_rows = []
+                    for insight in state.synthesis.insights:
+                        if ":" in insight:
+                            parts = insight.split(":", 1)
+                            table_rows.append({"Insight": parts[0].strip(), "Value": parts[1].strip()})
+                        elif " is " in insight:
+                            parts = insight.split(" is ", 1)
+                            table_rows.append({"Insight": parts[0].strip(), "Value": parts[1].strip()})
+                    if table_rows:
+                        st.write("#### 💡 Key Insights (Tabular)")
+                        st.table(pd.DataFrame(table_rows))
+                # --- Recommendations Table ---
+                if state and state.synthesis and state.synthesis.recommendations:
+                    rec_table_rows = []
+                    for rec in state.synthesis.recommendations:
+                        if ":" in rec:
+                            parts = rec.split(":", 1)
+                            rec_table_rows.append({"Recommendation": parts[0].strip(), "Value": parts[1].strip()})
+                        elif " is " in rec:
+                            parts = rec.split(" is ", 1)
+                            rec_table_rows.append({"Recommendation": parts[0].strip(), "Value": parts[1].strip()})
+                    if rec_table_rows:
+                        st.write("#### 🎯 Recommendations (Tabular)")
+                        st.table(pd.DataFrame(rec_table_rows))
                 
                 # Add assistant response to chat history
                 st.session_state.messages.append({"role": "assistant", "content": result})
@@ -134,31 +176,25 @@ def query_interface():
         st.rerun()
 
 
-def execute_conversational_query(user_query: str) -> str:
+def execute_conversational_query(user_query: str):
     """Execute a conversational query using the multi-agent system."""
-    
     # Create a simple context extraction (this could be enhanced with NLP)
     context = extract_context_from_query(user_query)
-    
     # Determine query type from the query content
     query_type = determine_query_type(user_query)
-    
     try:
         # Run the workflow asynchronously
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
         try:
             final_state = loop.run_until_complete(execute_workflow(user_query, context))
         finally:
             loop.close()
-        
         # Format the response for chat
-        return format_chat_response(final_state, user_query)
-        
+        return format_chat_response(final_state, user_query), final_state
     except Exception as e:
         logger.error(f"Query execution failed: {e}")
-        return f"Sorry, I encountered an error while processing your query: {str(e)}"
+        return f"Sorry, I encountered an error while processing your query: {str(e)}", None
 
 
 def extract_context_from_query(query: str) -> Dict[str, Any]:
@@ -255,15 +291,53 @@ def format_chat_response(state: WorkflowState, original_query: str) -> str:
                 response_parts.append(f"• {fuel['fuel_type'].title()}: ${fuel['price_per_gallon']:.2f}/gallon")
     
     # Add synthesis if available
-    if state.synthesis and state.synthesis.summary:
-        response_parts.append(f"\n**💡 Summary:**")
-        response_parts.append(state.synthesis.summary)
+    if state.synthesis and state.synthesis.insights:
+        response_parts.append(f"\n**💡 Key Insights:**")
+        # Try to detect if insights are key-value pairs for tabular formatting
+        table_rows = []
+        for insight in state.synthesis.insights:
+            # Simple heuristic: look for ":" or "is" as a separator
+            if ":" in insight:
+                parts = insight.split(":", 1)
+                table_rows.append((parts[0].strip(), parts[1].strip()))
+            elif " is " in insight:
+                parts = insight.split(" is ", 1)
+                table_rows.append((parts[0].strip(), parts[1].strip()))
+            else:
+                table_rows = None
+                break
+        if table_rows and len(table_rows) > 1:
+            # Render as a markdown table
+            response_parts.append("\n| Insight | Value |\n|---|---|")
+            for k, v in table_rows:
+                response_parts.append(f"| {k} | {v} |")
+        else:
+            # Fallback: bullet points with extra spacing
+            for insight in state.synthesis.insights:
+                response_parts.append(f"• {insight}\n")
     
     # Add recommendations if available
     if state.synthesis and state.synthesis.recommendations:
         response_parts.append(f"\n**🎯 Recommendations:**")
+        # Try to detect if recommendations are key-value pairs for tabular formatting
+        rec_table_rows = []
         for rec in state.synthesis.recommendations:
-            response_parts.append(f"• {rec}")
+            if ":" in rec:
+                parts = rec.split(":", 1)
+                rec_table_rows.append((parts[0].strip(), parts[1].strip()))
+            elif " is " in rec:
+                parts = rec.split(" is ", 1)
+                rec_table_rows.append((parts[0].strip(), parts[1].strip()))
+            else:
+                rec_table_rows = None
+                break
+        if rec_table_rows and len(rec_table_rows) > 1:
+            response_parts.append("\n| Recommendation | Value |\n|---|---|")
+            for k, v in rec_table_rows:
+                response_parts.append(f"| {k} | {v} |")
+        else:
+            for rec in state.synthesis.recommendations:
+                response_parts.append(f"• {rec}\n")
     
     # If no results, provide a helpful message
     if len(response_parts) == 1:  # Only has the introduction
@@ -373,7 +447,18 @@ def display_structured_data_results(structured_data):
     # Results table
     if structured_data.query_results:
         df = pd.DataFrame(structured_data.query_results)
-        st.dataframe(df, use_container_width=True)
+        # Add cost-benefit column if possible
+        if "price" in df.columns and "weight" in df.columns:
+            df["Price per Pound"] = df["price"] / df["weight"]
+        # Sort by price ascending if price exists
+        if "price" in df.columns:
+            df = df.sort_values(by="price", ascending=True)
+            min_price = df["price"].min()
+            def highlight_best(s):
+                return ['background-color: #d4edda' if v == min_price else '' for v in s] if min_price is not None else ['' for _ in s]
+            st.dataframe(df.style.apply(highlight_best, subset=["price"]), use_container_width=True)
+        else:
+            st.dataframe(df, use_container_width=True)
         
         # Create visualizations
         if "weight" in df.columns and "price" in df.columns:

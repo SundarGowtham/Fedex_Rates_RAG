@@ -16,7 +16,7 @@ from qdrant_client.models import Distance, VectorParams
 from sentence_transformers import SentenceTransformer
 
 from .base import AgentConfig, AgentContext, AgentResponse, BaseAgent, register_agent
-from core.state import WorkflowState
+from src.core.state import WorkflowState
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchain_ollama import OllamaLLM
 
 from .base import AgentConfig, AgentContext, AgentResponse, BaseAgent, register_agent
-from core.state import QueryType, WorkflowState
+from src.core.state import QueryType, WorkflowState
 
 logger = logging.getLogger(__name__)
 
@@ -121,22 +121,24 @@ class SupervisorAgent(BaseAgent):
         and extract key information for routing decisions.
         """
         system_prompt = """
-        You are an expert shipping logistics analyst. Analyze the given query to understand:
-        1. The primary intent (pricing, routing, weather impact, fuel analysis, traffic analysis, or comprehensive)
-        2. The complexity level (simple, moderate, complex)
-        3. Required data sources
-        4. Confidence level in your analysis (0.0 to 1.0)
-        
-        Respond with a JSON object containing:
-        {
-            "intent": "primary_intent",
-            "complexity": "complexity_level",
-            "data_sources": ["source1", "source2"],
-            "confidence": 0.85,
-            "keywords": ["keyword1", "keyword2"],
-            "summary": "brief_summary"
-        }
-        """
+You are an expert shipping logistics analyst. Analyze the given query to understand:
+1. The primary intent (pricing, routing, weather impact, fuel analysis, traffic analysis, or comprehensive)
+2. The complexity level (simple, moderate, complex)
+3. Required data sources
+4. Confidence level in your analysis (0.0 to 1.0)
+
+You MUST respond with ONLY a valid JSON object in this exact format:
+{
+    "intent": "primary_intent",
+    "complexity": "complexity_level", 
+    "data_sources": ["source1", "source2"],
+    "confidence": 0.85,
+    "keywords": ["keyword1", "keyword2"],
+    "summary": "brief_summary"
+}
+
+Do not include any other text, only the JSON object.
+"""
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -145,9 +147,41 @@ class SupervisorAgent(BaseAgent):
         
         try:
             response = await self.llm.ainvoke(messages)
-            # Parse the response (assuming it returns JSON)
+            # Parse the response (OllamaLLM returns string directly)
             import json
-            analysis = json.loads(response.content)
+            if hasattr(response, 'content'):
+                # Handle LangChain message objects
+                response_text = response.content
+            else:
+                # Handle direct string responses from OllamaLLM
+                response_text = str(response)
+            
+            # Clean up the response text
+            response_text = response_text.strip()
+            
+            # Try to extract JSON from the response
+            try:
+                analysis = json.loads(response_text)
+            except json.JSONDecodeError:
+                # Try to find JSON in the response
+                import re
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    try:
+                        analysis = json.loads(json_match.group(0))
+                    except json.JSONDecodeError:
+                        logger.warning(f"Could not parse JSON from response: {response_text}")
+                        return self._fallback_analysis(user_query)
+                else:
+                    logger.warning(f"No JSON found in response: {response_text}")
+                    return self._fallback_analysis(user_query)
+            
+            # Validate the analysis structure
+            required_keys = ["intent", "complexity", "data_sources", "confidence", "keywords", "summary"]
+            if not all(key in analysis for key in required_keys):
+                logger.warning(f"Missing required keys in analysis: {analysis}")
+                return self._fallback_analysis(user_query)
+            
             return analysis
         except Exception as e:
             logger.warning(f"LLM analysis failed, using fallback: {e}")

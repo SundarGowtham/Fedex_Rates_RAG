@@ -6,13 +6,15 @@ This script helps you get started with the Aura platform by:
 1. Checking prerequisites
 2. Setting up the environment
 3. Starting the infrastructure
-4. Launching the Streamlit application
+4. Clearing caches for fresh start
+5. Launching the Streamlit application
 """
 
 import os
 import sys
 import subprocess
 import time
+import asyncio
 from pathlib import Path
 
 def print_banner():
@@ -21,6 +23,27 @@ def print_banner():
     print("🚢 Aura Shipping Intelligence Platform")
     print("=" * 60)
     print()
+
+def clear_caches():
+    """Clear all caches for fresh start."""
+    print("🧹 Clearing caches for fresh start...")
+    
+    try:
+        # Run the cache clearing script
+        result = subprocess.run([sys.executable, "scripts/misc/clear_caches.py"], 
+                              capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            print("✅ Caches cleared successfully")
+            return True
+        else:
+            print(f"⚠️  Cache clearing completed with warnings: {result.stderr}")
+            return True  # Continue anyway
+    except subprocess.TimeoutExpired:
+        print("⚠️  Cache clearing timed out, continuing...")
+        return True
+    except Exception as e:
+        print(f"⚠️  Error clearing caches: {e}, continuing...")
+        return True  # Continue anyway
 
 def check_prerequisites():
     """Check if all prerequisites are installed."""
@@ -227,7 +250,12 @@ def main():
         print("\n❌ Dependency installation failed.")
         return
     
-    # Step 5: Launch application
+    # Step 5: Clear caches
+    if not clear_caches():
+        print("\n❌ Cache clearing failed.")
+        return
+    
+    # Step 6: Launch application
     print("\n🎉 Setup complete! Launching Aura...")
     launch_application()
 

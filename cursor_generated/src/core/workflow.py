@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
-from agents.base import AgentContext, AgentConfig, BaseAgent, get_agent
-from core.state import AgentStatus, WorkflowState
+from src.agents.base import AgentContext, AgentConfig, BaseAgent, get_agent, get_all_agents
+from src.core.state import AgentStatus, WorkflowState, AgentResult
 
 logger = logging.getLogger(__name__)
 
@@ -106,10 +106,9 @@ class WorkflowManager:
     async def _execute_agent_node(self, agent_name: str, state: WorkflowState) -> WorkflowState:
         """Execute a specific agent node."""
         try:
-            # Mark workflow as running
+            # Mark workflow as running if not already
             if state.workflow_status == AgentStatus.PENDING:
                 state.workflow_status = AgentStatus.RUNNING
-                state.execution_start = datetime.utcnow()
             
             # Get the agent
             agent = get_agent(agent_name)
@@ -166,19 +165,19 @@ class WorkflowManager:
             return
         
         if agent_name == "structured_data":
-            from core.state import StructuredDataResult
+            from src.core.state import StructuredDataResult
             state.structured_data = StructuredDataResult(**result.data)
         
         elif agent_name == "vector_search":
-            from core.state import VectorSearchResult
+            from src.core.state import VectorSearchResult
             state.vector_search = VectorSearchResult(**result.data)
         
         elif agent_name == "auxiliary_intelligence":
-            from core.state import AuxiliaryDataResult
+            from src.core.state import AuxiliaryDataResult
             state.auxiliary_data = AuxiliaryDataResult(**result.data)
         
         elif agent_name == "synthesis_visualization":
-            from core.state import VisualizationResult
+            from src.core.state import VisualizationResult
             state.synthesis = VisualizationResult(**result.data)
     
     def _route_from_supervisor(self, state: WorkflowState) -> str:
@@ -231,7 +230,8 @@ class WorkflowManager:
         # Create initial state
         state = WorkflowState(
             user_query=user_query,
-            query_context=query_context or {}
+            query_context=query_context or {},
+            execution_start=datetime.utcnow()  # Set execution start time
         )
         
         # Build workflow if not already built
@@ -243,9 +243,18 @@ class WorkflowManager:
             logger.info(f"Starting workflow execution for session: {state.session_id}")
             
             # Run the workflow
-            final_state = await self.graph.ainvoke(
-                state
-            )
+            result = await self.graph.ainvoke(state)
+            
+            # Handle the result - it might be a dict or WorkflowState
+            if isinstance(result, dict):
+                # Convert dict back to WorkflowState
+                final_state = WorkflowState(**result)
+            else:
+                final_state = result
+            
+            # Ensure execution_start is set
+            if not final_state.execution_start:
+                final_state.execution_start = state.execution_start
             
             # Calculate total execution time
             if final_state.execution_start:

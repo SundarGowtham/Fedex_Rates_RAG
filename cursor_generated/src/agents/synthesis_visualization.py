@@ -17,7 +17,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchain_ollama import OllamaLLM
 
 from .base import AgentConfig, AgentContext, AgentResponse, BaseAgent, register_agent
-from core.state import WorkflowState
+from src.core.state import WorkflowState
 
 logger = logging.getLogger(__name__)
 
@@ -157,11 +157,22 @@ class SynthesisVisualizationAgent(BaseAgent):
             data_summary = self._prepare_data_summary(agent_data)
             
             system_prompt = """
-            You are an expert shipping logistics analyst. Based on the provided data, generate 3-5 key insights about shipping operations, costs, and logistics. Focus on actionable insights that would be valuable for shipping decisions.
-            
-            Format your response as a JSON array of insight strings:
-            ["insight 1", "insight 2", "insight 3"]
-            """
+You are an expert shipping logistics analyst. Based strictly on the provided data, generate 3-5 key insights about shipping operations, costs, and logistics. Focus on actionable insights that would be valuable for shipping decisions.
+
+<<Guardrails>>
+- You are ONLY allowed to use data from the following tables: datasource_fedex_pricing, datasource_fedex_zone_distance_mapping, shipping_rates, shipping_zones, weather_data, fuel_prices, traffic_data.
+- Do NOT mention, speculate about, or reference any shipping carrier other than FedEx. This includes USPS, UPS, DHL, or any other company.
+- If the answer cannot be found in the provided data, respond with: "The requested information is not available in the current dataset."
+- Do NOT use any prior knowledge, training data, or assumptions about shipping, pricing, or carriers. Only use the facts present in the database.
+- Do NOT invent, guess, or hallucinate any information.
+- If asked about unavailable data, clearly state its absence.
+<</Guardrails>>
+
+You MUST respond with ONLY a valid JSON array in this exact format:
+["insight 1", "insight 2", "insight 3"]
+
+Do not include any other text, only the JSON array.
+"""
             
             user_prompt = f"""
             User Query: {context.user_query}
@@ -181,9 +192,38 @@ class SynthesisVisualizationAgent(BaseAgent):
             
             # Parse JSON response
             try:
-                insights = json.loads(response.content)
+                if hasattr(response, 'content'):
+                    # Handle LangChain message objects
+                    response_text = response.content
+                else:
+                    # Handle direct string responses from OllamaLLM
+                    response_text = str(response)
+                
+                # Clean up the response text
+                response_text = response_text.strip()
+                
+                # Try to extract JSON from the response
+                try:
+                    insights = json.loads(response_text)
+                except json.JSONDecodeError:
+                    # Try to find JSON array in the response
+                    import re
+                    json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            insights = json.loads(json_match.group(0))
+                        except json.JSONDecodeError:
+                            logger.warning(f"Could not parse JSON from response: {response_text}")
+                            return self._generate_fallback_insights(agent_data)
+                    else:
+                        logger.warning(f"No JSON array found in response: {response_text}")
+                        return self._generate_fallback_insights(agent_data)
+                
                 if isinstance(insights, list):
                     return insights
+                else:
+                    logger.warning(f"Response is not a list: {insights}")
+                    return self._generate_fallback_insights(agent_data)
             except json.JSONDecodeError:
                 pass
             
@@ -203,11 +243,22 @@ class SynthesisVisualizationAgent(BaseAgent):
             data_summary = self._prepare_data_summary(agent_data)
             
             system_prompt = """
-            You are an expert shipping logistics consultant. Based on the provided data, generate 3-5 actionable recommendations for optimizing shipping operations, reducing costs, or improving efficiency.
-            
-            Format your response as a JSON array of recommendation strings:
-            ["recommendation 1", "recommendation 2", "recommendation 3"]
-            """
+You are an expert shipping logistics consultant. Based strictly on the provided data, generate 3-5 actionable recommendations for optimizing shipping operations, reducing costs, or improving efficiency.
+
+<<Guardrails>>
+- You are ONLY allowed to use data from the following tables: datasource_fedex_pricing, datasource_fedex_zone_distance_mapping, shipping_rates, shipping_zones, weather_data, fuel_prices, traffic_data.
+- Do NOT mention, speculate about, or reference any shipping carrier other than FedEx. This includes USPS, UPS, DHL, or any other company.
+- If the answer cannot be found in the provided data, respond with: "The requested information is not available in the current dataset."
+- Do NOT use any prior knowledge, training data, or assumptions about shipping, pricing, or carriers. Only use the facts present in the database.
+- Do NOT invent, guess, or hallucinate any information.
+- If asked about unavailable data, clearly state its absence.
+<</Guardrails>>
+
+You MUST respond with ONLY a valid JSON array in this exact format:
+["recommendation 1", "recommendation 2", "recommendation 3"]
+
+Do not include any other text, only the JSON array.
+"""
             
             user_prompt = f"""
             User Query: {context.user_query}
@@ -227,9 +278,38 @@ class SynthesisVisualizationAgent(BaseAgent):
             
             # Parse JSON response
             try:
-                recommendations = json.loads(response.content)
+                if hasattr(response, 'content'):
+                    # Handle LangChain message objects
+                    response_text = response.content
+                else:
+                    # Handle direct string responses from OllamaLLM
+                    response_text = str(response)
+                
+                # Clean up the response text
+                response_text = response_text.strip()
+                
+                # Try to extract JSON from the response
+                try:
+                    recommendations = json.loads(response_text)
+                except json.JSONDecodeError:
+                    # Try to find JSON array in the response
+                    import re
+                    json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            recommendations = json.loads(json_match.group(0))
+                        except json.JSONDecodeError:
+                            logger.warning(f"Could not parse JSON from response: {response_text}")
+                            return self._generate_fallback_recommendations(agent_data)
+                    else:
+                        logger.warning(f"No JSON array found in response: {response_text}")
+                        return self._generate_fallback_recommendations(agent_data)
+                
                 if isinstance(recommendations, list):
                     return recommendations
+                else:
+                    logger.warning(f"Response is not a list: {recommendations}")
+                    return self._generate_fallback_recommendations(agent_data)
             except json.JSONDecodeError:
                 pass
             

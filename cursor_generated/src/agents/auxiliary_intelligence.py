@@ -15,7 +15,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import AgentConfig, AgentContext, AgentResponse, BaseAgent, register_agent
-from core.state import WorkflowState
+from src.core.state import WorkflowState
 
 logger = logging.getLogger(__name__)
 

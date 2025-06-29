@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
 
-from core.state import AgentResult, AgentStatus, WorkflowState
+from src.core.state import AgentResult, AgentStatus, WorkflowState
 
 logger = logging.getLogger(__name__)
 
